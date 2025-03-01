@@ -1,0 +1,57 @@
+TEMPLATE FOR USING CHEAP YELLOW DISPLAY WITH SQUARELINE STUDIO AND PLATFORMIO ARDUINO FRAMEWORK
+
+Extract the zip to a folder where you wish to keep your new project.
+(You may want to keep a folder just for the template and duplicate that for each new project).
+In Visual Studio Code with Platformio, open the template folder.
+When you first open the folder containing this template, platformio will load the necessary libraries.
+
+This template includes a simple project from Squareline Studio ("SLS")
+  It is already in the src/ui directory.  
+  You can build and upload this project to your CYD as a test if you like.
+  The project has a blue button.  When it is pressed, the ball will drop and bounce off the button.
+
+You will be exporting your SLS ui into that directory AFTER
+  first deleting all the files in that directory.
+
+
+To insert (export) a project from SLS, first set your export parameters in File/Project Settings
+
+    Width:320
+    Height: 240
+    Depth: 16-bit
+    Board Group: Arduino
+    Board: Arduino with TFT_eSPI
+
+    Set UI Files Export Path to the path to your projects's src/ui folder.
+      for example:
+        C:\Users\owner\Documents\PlatformIO\Projects\Squareline Studio CYD Base Project\src\ui\filelist.txt
+
+    Set Call functions export file to .cpp
+
+    click on APPLY CHANGES
+
+    Note the LVGL version here and make sure you platfomio.ini lib-dep references the same version
+      for example:
+        lib_deps = 
+	        bodmer/TFT_eSPI@^2.5.42
+	        https://github.com/PaulStoffregen/XPT2046_Touchscreen.git ;#v1.4
+	        lvgl/lvgl@^8.3.6 ; align this rev with the rev used by Squareline Studio
+
+Then to actually export the SLS project into your platformio project, click Export/Export UI Files
+
+Next you have to copy files to different locations.  These files are in the directory "NECESARY TEMPLATE FILES"
+    copy lv_conf.h to .pio\libdeps\cyd\lv_conf.h
+    copy User_Setup.h to .pio\libdeps\cyd\TFT_eSPI
+    (these paths are noted in the comment at the top of each file)
+
+Check that all of the fonts you used in the SLS project are turned on.  These start at line 366 of lv_conf.h
+   "1" indicates that you need the font, "0" indicates that you do not need the font.
+
+DO NOT move the lvgl examples directory into your src folder.  In fact, you can delete this and the demos directory
+ if you wish.  The compilation of these directories is already turned off in lv_conf.h
+
+In main.cpp, confirm the rotation of the display matches your project design.  line 126 of main.cpp
+       tft.setRotation(1); // Landscape orientation  1 =  CYC usb on right, 2 for vertical
+
+You should now be able to build your project and further edit the main.cpp code to add necessary real-world
+  interfaces, etc.
