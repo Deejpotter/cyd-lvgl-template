@@ -17,6 +17,9 @@
 class TemplateCode
 {
 private:
+  // I'm using static constexpr to define constants.
+  // They will be evaluated at compile time and one copy will be shared across all instances so it's more memory efficient.
+
   // Hardware Configuration
   static constexpr uint8_t XPT2046_IRQ = 36;
   static constexpr uint8_t XPT2046_MOSI = 13;
