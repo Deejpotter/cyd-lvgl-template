@@ -1,43 +1,71 @@
-// TestInterface.h
+// MainInterface.h
+/**
+ * MainInterface.h
+ * Last Updated: March 17, 2025
+ * Author: Daniel Potter
+ *
+ * Description:
+ * This header file defines the MainInterface class which manages a simple
+ * scrollable interface with temperature display. Designed for portrait orientation
+ * with a fixed header and scrollable content area.
+ *
+ * LVGL Layout Concepts:
+ * - Flex Layout: Modern flexible box layout system
+ * - Scrolling: Native LVGL scrolling support
+ * - Containers: Parent-child widget relationship
+ *
+ * UI/UX Principles:
+ * - Fixed header for consistent navigation
+ * - Scrollable content for expandability
+ * - Clear visual hierarchy
+ */
+
 #ifndef MAIN_INTERFACE_H
 #define MAIN_INTERFACE_H
 
 #include <lvgl.h>
-#include "GRBLController.h"
+#include <string>
+
+using std::string;
 
 class MainInterface
 {
 private:
-  GRBLController &grbl;
+  /**
+   * -------- UI Container Elements --------
+   * Hierarchical structure of the interface:
+   * mainScreen
+   * ├── headerContainer (fixed at top)
+   * └── scrollContainer (scrollable content area)
+   */
+  lv_obj_t *mainScreen;      // Primary screen container (320x240 portrait)
+  lv_obj_t *headerContainer; // Fixed header area (40px height)
+  lv_obj_t *scrollContainer; // Scrollable content area (remaining space)
 
-  lv_obj_t *mainScreen;
-  lv_obj_t *statusLabel;
-  lv_obj_t *xPlusBtn;
-  lv_obj_t *xMinusBtn;
-  lv_obj_t *yPlusBtn;
-  lv_obj_t *yMinusBtn;
-  lv_obj_t *homeBtn;
-  lv_obj_t *distanceSlider;
-  lv_obj_t *speedSlider;
-  lv_obj_t *distanceLabel;
-  lv_obj_t *speedLabel;
+  /**
+   * -------- Display Elements --------
+   * Text and data display widgets within containers
+   */
+  lv_obj_t *headerLabel; // Title text in header
+  lv_obj_t *tempLabel;   // Temperature value display
 
-  static void jogBtn_event_cb(lv_event_t *e);
-  static void homeBtn_event_cb(lv_event_t *e);
-  static void slider_event_cb(lv_event_t *e);
-
-  float getCurrentDistance();
-  int getCurrentSpeed();
-  void updateDistanceLabel();
-  void updateSpeedLabel();
-  // Creates the jog button with the given label text and user data.
-  lv_obj_t *createJogButton(lv_obj_t *parent, const char *labelText, const char *userData);
+  /**
+   * -------- Private Helper Methods --------
+   * Internal functions for UI component creation and management
+   */
+  void createHeader();        // Creates and configures the fixed header
+  void createScrollContent(); // Creates the scrollable content area
 
 public:
-  MainInterface(GRBLController &grblController) : grbl(grblController) {}
+  /**
+   * -------- Public Interface --------
+   * Main class interface for external interaction
+   */
+  MainInterface();  // Constructor - initializes pointers
+  ~MainInterface(); // Destructor - cleanup handled by LVGL
 
-  void init();
-  void update();
+  void init();   // Initialize the complete interface
+  void update(); // Update display (called in main loop)
 };
 
-#endif
+#endif // MAIN_INTERFACE_H

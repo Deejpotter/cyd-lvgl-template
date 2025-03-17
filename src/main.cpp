@@ -11,8 +11,6 @@
  */
 // Includes the code from the original template to set up the screen and touch etc.
 #include "TemplateCode.h"
-// Includes the code to control the CNC shield.
-#include "GRBLController.h"
 // Import the main interface code for the UI.
 #include "MainInterface.h"
 
@@ -22,8 +20,7 @@
  */
 // The reference to the singleton instance
 TemplateCode &templateCode = TemplateCode::getInstance();
-GRBLController grbl(Serial2); // Using Serial2 for GRBL communication
-MainInterface mainInterface(grbl);
+MainInterface mainInterface = MainInterface();
 
 /**
  * --------- Custom user functions ---------
@@ -49,10 +46,7 @@ void setup()
     } // Halt if initialization fails
   }
 
-  // Initialize GRBL communication
-  grbl.begin();
-
-  // Initialize test interface
+  // Initialize the main interface
   mainInterface.init();
 
   /* Add custom setup code here. */
@@ -74,6 +68,6 @@ void loop()
 
   /* Add custom loop code here. */
 
-  // Update the test interface each loop.
+  // Update the interface each loop. Add interface updates in the mainInterface update function.
   mainInterface.update();
 }
