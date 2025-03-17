@@ -3,13 +3,10 @@
 #define MAIN_INTERFACE_H
 
 #include <lvgl.h>
-#include "GRBLController.h"
 
 class MainInterface
 {
 private:
-  GRBLController &grbl;
-
   lv_obj_t *mainScreen;
   lv_obj_t *statusLabel;
   lv_obj_t *xPlusBtn;
@@ -34,7 +31,7 @@ private:
   lv_obj_t *createJogButton(lv_obj_t *parent, const char *labelText, const char *userData);
 
 public:
-  MainInterface(GRBLController &grblController) : grbl(grblController) {}
+  MainInterface() {}
 
   void init();
   void update();
