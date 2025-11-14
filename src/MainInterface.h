@@ -30,42 +30,30 @@ using std::string;
 
 class MainInterface
 {
+
 private:
-  /**
-   * -------- UI Container Elements --------
-   * Hierarchical structure of the interface:
-   * mainScreen
-   * ├── headerContainer (fixed at top)
-   * └── scrollContainer (scrollable content area)
-   */
-  lv_obj_t *mainScreen;      // Primary screen container (320x240 portrait)
-  lv_obj_t *headerContainer; // Fixed header area (40px height)
-  lv_obj_t *scrollContainer; // Scrollable content area (remaining space)
+  // UI Containers
+  lv_obj_t *mainScreen;
+  lv_obj_t *headerContainer;
 
-  /**
-   * -------- Display Elements --------
-   * Text and data display widgets within containers
-   */
-  lv_obj_t *headerLabel; // Title text in header
-  lv_obj_t *tempLabel;   // Temperature value display
+  // Display Elements
+  lv_obj_t *headerLabel;
+  lv_obj_t *tempLabel;
+  lv_obj_t *humidityLabel;
 
-  /**
-   * -------- Private Helper Methods --------
-   * Internal functions for UI component creation and management
-   */
-  void createHeader();        // Creates and configures the fixed header
-  void createScrollContent(); // Creates the scrollable content area
+  // Helper Methods
+  void createHeader();
 
 public:
-  /**
-   * -------- Public Interface --------
-   * Main class interface for external interaction
-   */
-  MainInterface();  // Constructor - initializes pointers
-  ~MainInterface(); // Destructor - cleanup handled by LVGL
+  MainInterface();
+  ~MainInterface();
 
-  void init();   // Initialize the complete interface
-  void update(); // Update display (called in main loop)
+  void init();
+  void update();
+
+  // Methods to update sensor values
+  void setTemperature(float tempC);
+  void setHumidity(float humidity);
 };
 
 #endif // MAIN_INTERFACE_H

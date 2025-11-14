@@ -1,4 +1,4 @@
-//* COPY THIS FILE TO .pio\libdeps\cyd\lv_conf.h
+//* COPY THIS FILE TO .pio\libdeps\[model]\lv_conf.h
 
 /**
  * @file lv_conf.h

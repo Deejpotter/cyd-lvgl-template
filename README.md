@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a template that can be used to create a project for the JC2432W328R (AKA the Cheap Yellow Display) ESP32 board. The project is designed to initialize the display, touch screen, and lvgl interface.
+This is a template that can be used to create a project for the JC2432W328R (AKA the Cheap Yellow Display) ESP32 board, as well as the JC2432W328C and JC4827W543R. The project is designed to initialize the display, touch screen, and lvgl interface.
 The user interface is built using LVGL. The code is uploaded to the CYD using PlatformIO.
 
 The rest of the project is up to you! You can add your own logic, events, and UI elements to create a custom project.
@@ -13,6 +13,20 @@ Use the pins and other information in this template to connect sensors, motors, 
 
 - JC2432W328R ESP32 Board
   - 2.8-inch TFT display (320x240 resolution)
+  - ST7789 V2 display driver
+  - ESP32-WROOM microcontroller
+  - Built-in USB-C connector
+  - Resistive touch screen
+
+- JC2432W328C ESP32 Board
+  - 2.8-inch TFT display (320x240 resolution)
+  - ST7789 V2 display driver
+  - ESP32-WROOM microcontroller
+  - Built-in USB-C connector
+  - Capacitive touch screen (CST820 controller)
+
+- JC4827W543R ESP32 Board
+  - 4.82-inch TFT display (540x480 resolution)
   - ST7789 V2 display driver
   - ESP32-WROOM microcontroller
   - Built-in USB-C connector
@@ -47,37 +61,44 @@ project/
 └── README.md
 ```
 
-## Display Pin Configuration
+## Display Pin Configurations
+
+### JC2432W328R
 
 ```cpp
-# define TFT_MISO 12
-# define TFT_MOSI 13
-# define TFT_SCLK 14
-# define TFT_CS   15
-# define TFT_DC   2
-# define TFT_RST  -1
-# define TFT_BL   27
+#define TFT_MISO 12
+#define TFT_MOSI 13
+#define TFT_SCLK 14
+#define TFT_CS   15
+#define TFT_DC   2
+#define TFT_RST  -1
+#define TFT_BL   27
+// Touch (resistive)
+#define TOUCH_CS 33
+#define TOUCH_IRQ 39
 ```
 
-Display Pin Configuration
+> Note: The pinout above is confirmed for the JC2432W328R (resistive). Some online sources mention pins 21 and 27 may be switched on other models; this template uses the configuration from the [env:jc2432w328r] in `platformio.ini`.
+
+### JC2432W328C
 
 ```cpp
-# define TFT_MISO 12
-# define TFT_MOSI 13
-# define TFT_SCLK 14
-# define TFT_CS   15
-# define TFT_DC   2
-# define TFT_RST  -1
-# define TFT_BL   27
+#define TFT_MISO 12
+#define TFT_MOSI 13
+#define TFT_SCLK 14
+#define TFT_CS   15
+#define TFT_DC   2
+#define TFT_RST  -1
+#define TFT_BL   27
+// Touch (capacitive, CST820)
+#define TOUCH_SDA 18
+#define TOUCH_SCL 19
+#define TOUCH_INT 39
 ```
 
-``` txt
-Available GPIO for Actuator Control
-GPIO21 (I2C SDA)
-GPIO22 (I2C SCL)
-GPIO35 (Input only, analog)
-GPIO17, 16, 4 (RGB LED pins, can be repurposed)
-```
+> Note: The pinout above is typical for the JC2432W328C (capacitive, CST820). The CST820 touch controller uses I2C. Confirm your board's silkscreen or schematic if you encounter issues.
+
+### JC4827W543R
 
 ## Building and Flashing
 
@@ -111,19 +132,11 @@ pio run --target upload
 
 ## UI Modifications
 
-The user interface is built using Squareline Studio. To modify:
-
-- Open the project in Squareline Studio
-- Make desired changes
-- Export to the src/ui directory
-- Implement any new event handlers in ui_events.cpp
+The user interface is built using the provided template files. To modify or extend the UI, edit the template source files in the `src/` directory. Implement any new event handlers or logic in your own `.cpp` files as needed.
 
 ### Important Notes
 
-- Don't modify the generated UI files directly
-
-- All custom logic should go in main.cpp or separate files
-- Always implement events in ui_events.cpp
+- All custom logic should go in `main.cpp` or separate files
 - Keep the main loop running smoothly for responsive UI
 
 ## Troubleshooting
@@ -142,6 +155,8 @@ Verify library versions are compatible
 
 ## Resources
 
+### JC2432W328R links
+
 - Almost correct pinout (pins 21 and 27 are switched): [ESP32 Cheap Yellow Display (CYD) Pinout (ESP32-2432S028R) | Random Nerd Tutorials](https://randomnerdtutorials.com/esp32-cheap-yellow-display-cyd-pinout-esp32-2432s028r/#speaker)
 - This specific model of device (not quite accurate): <https://github.com/maxpill/JC2432W328>
 - Squareline: <https://squareline.io/downloads>
@@ -152,6 +167,16 @@ Verify library versions are compatible
 - Case 1: [GUITION JC2432W328C cover by Matej's Workshop | Download free STL model | Printables.com](https://www.printables.com/model/913023-guition-jc2432w328c-cover/files)
 - Case 2: [ESP32 2.8inch JC2432W328 Case by GrafMax17 - Thingiverse](https://www.thingiverse.com/thing:6892431)
 
+### JC2432W328C links
+
+- Official/Community documentation: [maxpill/JC2432W328 GitHub](https://github.com/maxpill/JC2432W328)
+- Community discussion and working code: [Reddit: Working CYD JC2432W328 Display 240x320 2.8" USB-C](https://www.reddit.com/r/esp32/comments/1dy5k11/working_cyd_jc2432w328_display_240x320_28_usbc/)
+- Product listing and specs: [AliExpress JC2432W328C](https://aliexpress.com/item/1005006729707613.html)
+- ST7789 display driver datasheet: [ST7789 PDF](https://www.rhydolabz.com/documents/33/ST7789.pdf)
+- CST820 touch controller info: [CST820 datasheet (PDF)](https://datasheet.lcsc.com/lcsc/1811141810_FocalTech-Systems-CST820S_C181837.pdf)
+
+### JC4827W543R links
+
 ## Original Template Readme
 
 Extract the zip to a folder where you wish to keep your new project.
@@ -159,64 +184,14 @@ Extract the zip to a folder where you wish to keep your new project.
 In Visual Studio Code with Platformio, open the template folder.
 When you first open the folder containing this template, platformio will load the necessary libraries.
 
-This template includes a simple project from Squareline Studio ("SLS")
-  It is already in the src/ui directory.  
-  You can build and upload this project to your CYD as a test if you like.
-  The project has a blue button.  When it is pressed, the ball will drop and bounce off the button.
+## Template File Usage
 
-You will be exporting your SLS ui into that directory AFTER
-  first deleting all the files in that directory.
+The template files provided in this repository are designed to help you quickly set up a working LVGL project for supported ESP32 display boards. Use the files in the `template files/` directory as a starting point for your own project.
 
-## To insert (export) a project from SLS
+### Steps
 
-### 1. First set your export parameters in File/Project Settings
+1. Copy the necessary template files (such as `main.cpp`, `lv_conf.h`, `User_Setup.h`, etc.) from the `template files/` directory into your project as needed.
+2. Adjust pin assignments and configuration in `platformio.ini` and the template files to match your hardware.
+3. Build and upload the project using PlatformIO.
 
-``` txt
-Width:320
-Height: 240
-Depth: 16-bit
-Board Group: Arduino
-Board: Arduino with TFT_eSPI
-```
-
-### 2. Set UI Files Export Path to the path to your projects's src/ui folder
-
-for example:
-  C:\Users\owner\Documents\PlatformIO\Projects\Squareline Studio CYD Base Project\src\ui\filelist.txt
-
-### 3. Set Call functions export file to .cpp
-
-### 4. click on APPLY CHANGES
-
-### 5. Note the LVGL version here and make sure you platfomio.ini lib-dep references the same version
-
-for example:
-
-``` txt
-lib_deps = 
-  bodmer/TFT_eSPI@^2.5.42
-  https://github.com/PaulStoffregen/XPT2046_Touchscreen.git ;#v1.4
-  lvgl/lvgl@^8.3.6 ; align this rev with the rev used by Squareline Studio
-```
-
-### 6. Then to actually export the SLS project into your platformio project, click Export/Export UI Files
-
-### 7. Next you have to copy files to different locations.  These files are in the directory "NECESARY TEMPLATE FILES"
-
-``` txt
-copy lv_conf.h to .pio\libdeps\cyd\lv_conf.h
-copy User_Setup.h to .pio\libdeps\cyd\TFT_eSPI
-(these paths are noted in the comment at the top of each file)
-```
-
-Check that all of the fonts you used in the SLS project are turned on.  These start at line 366 of lv_conf.h
-   "1" indicates that you need the font, "0" indicates that you do not need the font.
-
-DO NOT move the lvgl examples directory into your src folder.  In fact, you can delete this and the demos directory
- if you wish.  The compilation of these directories is already turned off in lv_conf.h
-
-In main.cpp, confirm the rotation of the display matches your project design.  line 126 of main.cpp
-       tft.setRotation(1); // Landscape orientation  1 =  CYC usb on right, 2 for vertical
-
-You should now be able to build your project and further edit the main.cpp code to add necessary real-world
-  interfaces, etc.
+Refer to comments in the template files for further customization and extension.

@@ -1,7 +1,5 @@
-// MainInterface.cpp
 /**
- * MainInterface.cpp
- * Last Updated: March 17, 2025
+ * Last Updated: 14/11/25
  * Author: Daniel Potter
  *
  * Description:
@@ -35,7 +33,6 @@ MainInterface::MainInterface()
 {
   mainScreen = nullptr;
   headerContainer = nullptr;
-  scrollContainer = nullptr;
   headerLabel = nullptr;
   tempLabel = nullptr;
 }
@@ -71,7 +68,20 @@ void MainInterface::init()
 
   // Create UI components in order (top to bottom)
   createHeader();
-  createScrollContent();
+
+  // Create temperature display directly on mainScreen
+  tempLabel = lv_label_create(mainScreen);
+  lv_obj_set_style_text_font(tempLabel, &lv_font_montserrat_28, 0);
+  lv_obj_set_style_text_color(tempLabel, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+  lv_label_set_text(tempLabel, "Temperature:\n--.-°C");
+  lv_obj_align(tempLabel, LV_ALIGN_TOP_MID, 0, 50);
+
+  // Create humidity display directly on mainScreen
+  humidityLabel = lv_label_create(mainScreen);
+  lv_obj_set_style_text_font(humidityLabel, &lv_font_montserrat_28, 0);
+  lv_obj_set_style_text_color(humidityLabel, lv_color_hex(0xFFFFFF), LV_PART_MAIN);
+  lv_label_set_text(humidityLabel, "Humidity:\n--.-%");
+  lv_obj_align_to(humidityLabel, tempLabel, LV_ALIGN_OUT_BOTTOM_MID, 0, 20);
 
   // Activate the screen
   lv_scr_load(mainScreen);
@@ -105,41 +115,27 @@ void MainInterface::createHeader()
  * This area fills the remaining space below header
  * and enables vertical scrolling
  */
-void MainInterface::createScrollContent()
-{
-  // Create main scrollable container
-  scrollContainer = lv_obj_create(mainScreen);
-  // Set size to fill remaining space (320-40 height)
-  lv_obj_set_size(scrollContainer, 240, 280);
-  // Match main screen background
-  lv_obj_set_style_bg_color(scrollContainer, lv_color_hex(0x000000), LV_PART_MAIN);
-  // Add padding for content spacing
-  lv_obj_set_style_pad_all(scrollContainer, 10, 0);
-
-  // Configure scrolling behavior
-  // Enable vertical scrolling only
-  lv_obj_set_scroll_dir(scrollContainer, LV_DIR_VER);
-  // Enable snap-to-center scrolling
-  lv_obj_set_scroll_snap_y(scrollContainer, LV_SCROLL_SNAP_CENTER);
-
-  // Create temperature display widget
-  tempLabel = lv_label_create(scrollContainer);
-  // Use larger font for better readability
-  lv_obj_set_style_text_font(tempLabel, &lv_font_montserrat_28, 0);
-  // Set initial text with placeholder value
-  lv_label_set_text(tempLabel, "Temperature:\n0.0°C");
-  // Center align at top of scroll area
-  lv_obj_align(tempLabel, LV_ALIGN_TOP_MID, 0, 20);
-}
 
 /**
  * Update function called in main loop
  * Will be implemented later with sensor data
  */
+
 void MainInterface::update()
 {
-  // Future implementation:
-  // - Read sensor data
-  // - Update temperature display
-  // - Handle any UI animations
+  // Placeholder: update logic if needed
+}
+
+void MainInterface::setTemperature(float tempC)
+{
+  char buf[32];
+  snprintf(buf, sizeof(buf), "Temperature:\n%.1f°C", tempC);
+  lv_label_set_text(tempLabel, buf);
+}
+
+void MainInterface::setHumidity(float humidity)
+{
+  char buf[32];
+  snprintf(buf, sizeof(buf), "Humidity:\n%.1f%%", humidity);
+  lv_label_set_text(humidityLabel, buf);
 }

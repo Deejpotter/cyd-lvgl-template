@@ -12,9 +12,16 @@ lv_disp_draw_buf_t TemplateCode::draw_buf;
 lv_color_t TemplateCode::buf[SCREEN_WIDTH * SCREEN_HEIGHT / 10];
 
 TemplateCode::TemplateCode()
+#ifdef TOUCH_TYPE_RESISTIVE
     : mySpi(VSPI),
       ts(XPT2046_CS, XPT2046_IRQ),
       tft(SCREEN_WIDTH, SCREEN_HEIGHT)
+#elif defined(TOUCH_TYPE_CAPACITIVE)
+    : ts(CST820_SDA, CST820_SCL, CST820_RST, CST820_INT),
+      tft(SCREEN_WIDTH, SCREEN_HEIGHT)
+#else
+    : tft(SCREEN_WIDTH, SCREEN_HEIGHT)
+#endif
 {
 }
 
@@ -29,7 +36,7 @@ TemplateCode &TemplateCode::getInstance()
 
 bool TemplateCode::begin()
 {
-  Serial.begin(9600);
+  // Serial will be initialized in main setup() at preferred baud rate
 
 #if LV_USE_LOG != 0
   lv_log_register_print_cb(debugPrint);
@@ -48,7 +55,9 @@ void TemplateCode::initializeHardware()
   initRGBled();
   ChangeRGBColor(RGB_COLOR_1);
 
+#ifdef TOUCH_TYPE_RESISTIVE
   mySpi.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
+#endif
 }
 
 void TemplateCode::initializeLVGL()
@@ -59,14 +68,19 @@ void TemplateCode::initializeLVGL()
 
 void TemplateCode::setupTouchscreen()
 {
+#ifdef TOUCH_TYPE_RESISTIVE
   ts.begin(mySpi);
   ts.setRotation(1);
+#endif
+#ifdef TOUCH_TYPE_CAPACITIVE
+  ts.begin();
+#endif
 }
 
 void TemplateCode::setupDisplay()
 {
   tft.begin();
-  tft.setRotation(3);
+  tft.setRotation(0); // Portrait orientation
 
   static lv_disp_drv_t disp_drv;
   lv_disp_drv_init(&disp_drv);
@@ -97,6 +111,7 @@ void TemplateCode::flushDisplay(lv_disp_drv_t *disp_drv, const lv_area_t *area, 
   lv_disp_flush_ready(disp_drv);
 }
 
+#ifdef TOUCH_TYPE_RESISTIVE
 void TemplateCode::readTouchpad(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
   auto &display = getInstance();
@@ -116,6 +131,25 @@ void TemplateCode::readTouchpad(lv_indev_drv_t *indev_drv, lv_indev_data_t *data
   data->point.x = touchX;
   data->point.y = touchY;
 }
+#endif
+#ifdef TOUCH_TYPE_CAPACITIVE
+void TemplateCode::readTouchpad(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
+{
+  auto &display = getInstance();
+  uint16_t rawX, rawY;
+  if (display.ts.getTouch(&rawX, &rawY))
+  {
+    // Map raw touchscreen coordinates to screen orientation
+    data->state = LV_INDEV_STATE_PR;
+    data->point.x = rawY;
+    data->point.y = 240 - rawX;
+  }
+  else
+  {
+    data->state = LV_INDEV_STATE_REL;
+  }
+}
+#endif
 
 void TemplateCode::update()
 {
