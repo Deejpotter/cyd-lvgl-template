@@ -125,10 +125,10 @@ void setup()
   mainInterface.init();
 
   // Register callback to update UI when sensors change
-  sensorManager.onChange([&](float t, float h){
+  sensorManager.onChange([&](float t, float h)
+                         {
     if (!isnan(t)) mainInterface.setTemperature(t);
-    if (!isnan(h)) mainInterface.setHumidity(h);
-  });
+    if (!isnan(h)) mainInterface.setHumidity(h); });
 
   // Schedule sensor reads and UI updates
   scheduler.addTask(std::bind(&SensorManager::update, &sensorManager), 2000);

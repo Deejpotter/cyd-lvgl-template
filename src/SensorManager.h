@@ -4,7 +4,8 @@
 #include <stdint.h>
 class DHT;
 
-class SensorManager {
+class SensorManager
+{
 public:
   using Callback = std::function<void(float tempC, float humidity)>;
 
@@ -22,7 +23,7 @@ private:
   uint8_t type;
   uint32_t interval;
   uint32_t lastRead;
-  float tmp; 
+  float tmp;
   float hum;
   Callback cb;
   DHT *dht;

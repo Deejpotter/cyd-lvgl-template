@@ -4,7 +4,8 @@
 #include <vector>
 #include <stdint.h>
 
-class PeriodicScheduler {
+class PeriodicScheduler
+{
 public:
   using Task = std::function<void()>;
 
@@ -18,7 +19,8 @@ public:
   void update(uint32_t now = 0);
 
 private:
-  struct Entry {
+  struct Entry
+  {
     Task cb;
     uint32_t interval;
     uint32_t lastRun;
