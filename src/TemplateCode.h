@@ -38,10 +38,17 @@ private:
   static constexpr uint8_t CST820_INT = 21;
 #endif
 
-  // Screen Configuration (portrait)
-  // LVGL expects width x height. For CYD portrait, use 240 x 320.
+  // Screen Configuration (per touch/display orientation)
+  // LVGL expects width x height.
+#ifdef TOUCH_TYPE_RESISTIVE
+  // Working settings for JC2432W328R (resistive): landscape 320x240
+  static constexpr uint16_t SCREEN_WIDTH = 320;
+  static constexpr uint16_t SCREEN_HEIGHT = 240;
+#else
+  // Default (e.g., capacitive model): portrait 240x320
   static constexpr uint16_t SCREEN_WIDTH = 240;
   static constexpr uint16_t SCREEN_HEIGHT = 320;
+#endif
 
 #ifdef TOUCH_TYPE_RESISTIVE
   // Touch Calibration Values

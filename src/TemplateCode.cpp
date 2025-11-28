@@ -80,7 +80,11 @@ void TemplateCode::setupTouchscreen()
 void TemplateCode::setupDisplay()
 {
   tft.begin();
-  tft.setRotation(0); // Portrait orientation
+#ifdef TOUCH_TYPE_RESISTIVE
+  tft.setRotation(3); // Working landscape orientation for JC2432W328R
+#else
+  tft.setRotation(0); // Portrait orientation for capacitive model
+#endif
 
   static lv_disp_drv_t disp_drv;
   lv_disp_drv_init(&disp_drv);
@@ -142,8 +146,8 @@ void TemplateCode::readTouchpad(lv_indev_drv_t *indev_drv, lv_indev_data_t *data
     // Map raw touchscreen coordinates to portrait screen orientation
     // For CST820 on CYD the sensor is rotated; swap and flip accordingly.
     data->state = LV_INDEV_STATE_PR;
-    data->point.x = rawY;                       // 0..SCREEN_WIDTH-1
-    data->point.y = SCREEN_WIDTH - 1 - rawX;    // use width (240) for flip
+    data->point.x = rawY;                    // 0..SCREEN_WIDTH-1
+    data->point.y = SCREEN_WIDTH - 1 - rawX; // use width (240) for flip
   }
   else
   {
