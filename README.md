@@ -100,6 +100,32 @@ project/
 
 ### JC4827W543R
 
+## Models and Orientation
+
+This template supports both CYD variants with a unified display pipeline. The only difference is the touch interface:
+
+- JC2432W328R (resistive): XPT2046 over SPI
+- JC2432W328C (capacitive): CST820 over I2C
+
+Model selection and orientation are controlled via build flags per environment in `platformio.ini`:
+
+- `MODEL_JC2432W328R` or `MODEL_JC2432W328C` (set by the selected environment)
+- `TFT_ROTATION` selects the screen orientation for both display and touch
+
+Rotation values (same as TFT_eSPI):
+
+- 0: Portrait (USB at bottom)
+- 1: Landscape CW
+- 2: Portrait 180°
+- 3: Landscape CCW
+
+Defaults in this repo:
+
+- `env:jc2432w328r`: `-DMODEL_JC2432W328R -DTFT_ROTATION=3` (working landscape)
+- `env:jc2432w328c`: `-DMODEL_JC2432W328C -DTFT_ROTATION=0` (portrait)
+
+Change orientation by editing `TFT_ROTATION` in the environment you build.
+
 ## Building and Flashing
 
 ### 1. Clone the repository
@@ -181,21 +207,11 @@ Verify library versions are compatible
 
 ### JC4827W543R links
 
-## Original Template Readme
+## How template files are applied
 
-Extract the zip to a folder where you wish to keep your new project.
-(You may want to keep a folder just for the template and duplicate that for each new project).
-In Visual Studio Code with Platformio, open the template folder.
-When you first open the folder containing this template, platformio will load the necessary libraries.
+A pre-build script copies the needed files automatically:
 
-## Template File Usage
+- `template files/lv_conf.h` -> `.pio/libdeps/<env>/lv_conf.h`
+- `template files/<env>/User_Setup.h` -> `.pio/libdeps/<env>/TFT_eSPI/User_Setup.h`
 
-The template files provided in this repository are designed to help you quickly set up a working LVGL project for supported ESP32 display boards. Use the files in the `template files/` directory as a starting point for your own project.
-
-### Steps
-
-1. Copy the necessary template files (such as `main.cpp`, `lv_conf.h`, `User_Setup.h`, etc.) from the `template files/` directory into your project as needed.
-2. Adjust pin assignments and configuration in `platformio.ini` and the template files to match your hardware.
-3. Build and upload the project using PlatformIO.
-
-Refer to comments in the template files for further customization and extension.
+No manual moves are required.
