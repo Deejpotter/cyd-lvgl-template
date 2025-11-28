@@ -12,11 +12,11 @@ lv_disp_draw_buf_t TemplateCode::draw_buf;
 lv_color_t TemplateCode::buf[SCREEN_WIDTH * SCREEN_HEIGHT / 10];
 
 TemplateCode::TemplateCode()
-#ifdef TOUCH_TYPE_RESISTIVE
+#if defined(MODEL_JC2432W328R)
     : mySpi(VSPI),
       ts(XPT2046_CS, XPT2046_IRQ),
       tft(SCREEN_WIDTH, SCREEN_HEIGHT)
-#elif defined(TOUCH_TYPE_CAPACITIVE)
+#elif defined(MODEL_JC2432W328C)
     : ts(CST820_SDA, CST820_SCL, CST820_RST, CST820_INT),
       tft(SCREEN_WIDTH, SCREEN_HEIGHT)
 #else
@@ -55,7 +55,7 @@ void TemplateCode::initializeHardware()
   initRGBled();
   ChangeRGBColor(RGB_COLOR_1);
 
-#ifdef TOUCH_TYPE_RESISTIVE
+#if defined(MODEL_JC2432W328R)
   mySpi.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
 #endif
 }
@@ -68,11 +68,11 @@ void TemplateCode::initializeLVGL()
 
 void TemplateCode::setupTouchscreen()
 {
-#ifdef TOUCH_TYPE_RESISTIVE
+#if defined(MODEL_JC2432W328R)
   ts.begin(mySpi);
-  ts.setRotation(1);
+  ts.setRotation(TFT_ROTATION);
 #endif
-#ifdef TOUCH_TYPE_CAPACITIVE
+#if defined(MODEL_JC2432W328C)
   ts.begin();
 #endif
 }
@@ -80,11 +80,7 @@ void TemplateCode::setupTouchscreen()
 void TemplateCode::setupDisplay()
 {
   tft.begin();
-#ifdef TOUCH_TYPE_RESISTIVE
-  tft.setRotation(3); // Working landscape orientation for JC2432W328R
-#else
-  tft.setRotation(0); // Portrait orientation for capacitive model
-#endif
+  tft.setRotation(TFT_ROTATION);
 
   static lv_disp_drv_t disp_drv;
   lv_disp_drv_init(&disp_drv);
@@ -115,7 +111,7 @@ void TemplateCode::flushDisplay(lv_disp_drv_t *disp_drv, const lv_area_t *area, 
   lv_disp_flush_ready(disp_drv);
 }
 
-#ifdef TOUCH_TYPE_RESISTIVE
+#if defined(MODEL_JC2432W328R)
 void TemplateCode::readTouchpad(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
   auto &display = getInstance();
@@ -136,18 +132,34 @@ void TemplateCode::readTouchpad(lv_indev_drv_t *indev_drv, lv_indev_data_t *data
   data->point.y = touchY;
 }
 #endif
-#ifdef TOUCH_TYPE_CAPACITIVE
+#if defined(MODEL_JC2432W328C)
 void TemplateCode::readTouchpad(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
   auto &display = getInstance();
   uint16_t rawX, rawY;
   if (display.ts.getTouch(&rawX, &rawY))
   {
-    // Map raw touchscreen coordinates to portrait screen orientation
-    // For CST820 on CYD the sensor is rotated; swap and flip accordingly.
+    // Basic mapping for CST820. Adjust for rotation.
     data->state = LV_INDEV_STATE_PR;
-    data->point.x = rawY;                    // 0..SCREEN_WIDTH-1
-    data->point.y = SCREEN_WIDTH - 1 - rawX; // use width (240) for flip
+    switch (TFT_ROTATION & 0x3)
+    {
+    case 0: // portrait
+      data->point.x = rawY;
+      data->point.y = SCREEN_WIDTH - 1 - rawX;
+      break;
+    case 1: // landscape CW
+      data->point.x = SCREEN_WIDTH - 1 - rawX;
+      data->point.y = SCREEN_HEIGHT - 1 - rawY;
+      break;
+    case 2: // portrait 180
+      data->point.x = SCREEN_HEIGHT - 1 - rawY;
+      data->point.y = rawX;
+      break;
+    case 3: // landscape CCW
+      data->point.x = rawX;
+      data->point.y = rawY;
+      break;
+    }
   }
   else
   {
