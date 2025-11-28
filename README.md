@@ -91,9 +91,9 @@ project/
 #define TFT_RST  -1
 #define TFT_BL   27
 // Touch (capacitive, CST820)
-#define TOUCH_SDA 18
-#define TOUCH_SCL 19
-#define TOUCH_INT 39
+#define I2C_SDA 33
+#define I2C_SCL 32
+#define TOUCH_INT 21
 ```
 
 > Note: The pinout above is typical for the JC2432W328C (capacitive, CST820). The CST820 touch controller uses I2C. Confirm your board's silkscreen or schematic if you encounter issues.
@@ -112,11 +112,14 @@ git clone git@github.com:Makerstore/actuator-controller.git
 
 Open the project in Visual Studio Code with the PlatformIO extension installed.
 
-After installing the required libraries, some files need to be moved to make the project build correctly.
+Templates are copied automatically before build.
 
-The lv_conf.h file needs to be moved from the template folder to sit NEXT to the lvgl folder in the lib folder.
+The pre-build script `scripts/copy_template.py` copies the needed files from `template files/` into `.pio/libdeps/<env>/`:
 
-The User_Setup.h file needs to be moved to the TFT_eSPI folder in the lib folder to replace the existing file.
+- `template files/lv_conf.h` -> `.pio/libdeps/<env>/lv_conf.h`
+- `template files/<env>/User_Setup.h` -> `.pio/libdeps/<env>/TFT_eSPI/User_Setup.h`
+
+You don’t need to move these files manually.
 
 ### 3. Build the project
 
@@ -138,6 +141,7 @@ The user interface is built using the provided template files. To modify or exte
 
 - All custom logic should go in `main.cpp` or separate files
 - Keep the main loop running smoothly for responsive UI
+- No scheduler or sensor manager are included by default; the loop is kept minimal
 
 ## Troubleshooting
 

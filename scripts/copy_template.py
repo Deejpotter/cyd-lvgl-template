@@ -1,116 +1,152 @@
-# PlatformIO extra script to copy template files into libdeps
-# Should be run as pre:extra script in platformio.ini (libs are installed before build)
+"""
+Simple, beginner‑friendly PlatformIO extra script
+
+What this does (and why):
+1) Copies files from your project's "template files/" folder into the active
+   PlatformIO environment's libdeps directory .pio/libdeps/<env>/.
+   - Keeping generated/config files inside libdeps keeps them per‑environment
+     and out of source control (beginner‑friendly and reproducible).
+
+2) Two common cases are handled out of the box:
+   - User_Setup.h -> into the TFT_eSPI library folder so the library picks up
+     your display setup. TFT_eSPI reads this from its own folder.
+   - lv_conf.h   -> into the environment root (.pio/libdeps/<env>/) so LVGL
+     can find your config during its build. LVGL searches next to its sources
+     or in the compiler include path; placing it at env root makes it visible.
+
+3) Optional per‑environment overrides:
+   If you create a folder named "template files/<env_name>/", those files will
+   be used instead of the default "template files/" versions for that env.
+
+How to enable:
+Add this to your platformio.ini environment section:
+  extra_scripts = pre:scripts/copy_template.py
+Using "pre:" ensures copies happen before compilation.
+"""
 
 import os
 import shutil
 import glob
 from SCons.Script import Import
 
+# PlatformIO provides a construction environment we can query
 Import("env")
 
-project_dir = env.subst('${PROJECT_DIR}')
-pioenv = env.get('PIOENV', os.environ.get('PIOENV'))
+# Resolve key paths and the active env name in a robust, readable way
+PROJECT_DIR = os.path.abspath(env.subst("$PROJECT_DIR"))  # project root
+ENV_NAME = env.get("PIOENV") or os.environ.get("PIOENV")  # e.g. jc2432w328c
+LIBDEPS_ROOT = (
+    os.path.join(PROJECT_DIR, ".pio", "libdeps", ENV_NAME) if ENV_NAME else None
+)
 
-# Files in this project's "template files/" dir that we will copy
-TPL_DIR = os.path.join(project_dir, 'template files')
-FILES_TO_COPY = [
-    # Copy User_Setup.h -> TFT_eSPI lib folder (so TFT_eSPI picks up the project setup)
-    { 'name': 'User_Setup.h', 'dest': 'lib', 'lib': 'TFT_eSPI' },
-    # Copy lv_conf.h -> env root next to the lvgl folder (lv_conf.h must be available to the lvgl build)
-    { 'name': 'lv_conf.h', 'dest': 'env_root', 'lib': 'lvgl' },
+# Where your templates live inside the project (space in name is OK on all OSes)
+TPL_DIR = os.path.join(PROJECT_DIR, "template files")
+# Per‑environment override directory (optional)
+ENV_TPL_DIR = (
+    os.path.join(TPL_DIR, ENV_NAME) if ENV_NAME else None
+)
+
+# Declare what to copy in a very simple, readable structure.
+# target: "libdir"  -> copy into the specific library folder (found by name/prefix)
+#         "envroot" -> copy into .pio/libdeps/<env>/ so other libs can see it
+FILES = [
+    {"name": "User_Setup.h", "target": "libdir", "lib": "TFT_eSPI"},
+    # Always use the top-level template for lv_conf.h (no per-env override)
+    {"name": "lv_conf.h",   "target": "envroot", "per_env": False},
 ]
 
-# Library name to target
-LIB_NAME = 'TFT_eSPI'
 
-# Optionally support per-environment template subdir
-env_tpl_dir = os.path.join(TPL_DIR, pioenv) if pioenv else None
+def get_src_for_item(item) -> str:
+    """Resolve the source directory for a given file.
 
-def find_lib_dir(project_dir, env_name, lib_name):
-    # Prefer exact path
-    base = os.path.join(project_dir, '.pio', 'libdeps', env_name)
-    if not os.path.isdir(base):
+    Most files can use per‑env overrides if present, but some (like lv_conf.h)
+    should always come from the top‑level template folder.
+    """
+    use_per_env = item.get("per_env", True)
+    if use_per_env and ENV_TPL_DIR and os.path.isdir(ENV_TPL_DIR):
+        return ENV_TPL_DIR
+    return TPL_DIR
+
+
+def find_library_dir(lib_name):
+    """Find a library folder inside .pio/libdeps/<env>/ by prefix‑matching.
+
+    Why prefix: PlatformIO often appends versions (e.g., "TFT_eSPI_ID1559").
+    We prefer an exact name match and fall back to the first prefix match.
+    """
+    if not LIBDEPS_ROOT or not os.path.isdir(LIBDEPS_ROOT):
         return None
-    # Find library path by name prefix (works across versions)
-    libs = glob.glob(os.path.join(base, lib_name + '*'))
-    if not libs:
+    candidates = glob.glob(os.path.join(LIBDEPS_ROOT, lib_name + "*"))
+    if not candidates:
         return None
-    # Prefer directory exactly named LIB_NAME
-    for p in libs:
+    for p in candidates:
         if os.path.basename(p) == lib_name:
             return p
-    # Otherwise return first match
-    return libs[0]
+    return candidates[0]
 
 
-def copy_file_to_env_root(project_dir, env_name, filename, lib_name=None):
-    base = os.path.join(project_dir, '.pio', 'libdeps', env_name)
-    if not os.path.isdir(base):
-        return False
+def safe_copy(src: str, dst: str) -> bool:
+    """Copy a file, creating the destination directory if needed.
 
-    # If a lib_name is given, ensure lib exists in this environment
-    if lib_name:
-        lib_exists = bool(glob.glob(os.path.join(base, lib_name + '*')))
-        if not lib_exists:
-            return False
-
-    src = os.path.join(env_tpl_dir if env_tpl_dir and os.path.isdir(env_tpl_dir) else TPL_DIR, filename)
-    if not os.path.isfile(src):
-        return False
-
-    dst = os.path.join(base, filename)
+    Why copy2: preserves timestamps/metadata which helps repeatable builds.
+    """
     try:
-        # Overwrite the env-root target with template. No backup is kept by default.
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy2(src, dst)
-        print('[copy_template] Copied env root file: %s -> %s' % (src, dst))
+        print(f"[copy_template] Copied: {src} -> {dst}")
         return True
     except Exception as e:
-        print('[copy_template] Error copying %s -> %s: %s' % (src, dst, str(e)))
+        print(f"[copy_template] ERROR copying {src} -> {dst}: {e}")
         return False
 
 
-def copy_templates():
-    if not pioenv:
-        print('[copy_template] PIOENV not set. Skipping template copy.')
+def run():
+    # Basic sanity checks with helpful messages for beginners
+    if not ENV_NAME:
+        print("[copy_template] PIOENV not set. Is this running under PlatformIO? Skipping.")
         return
 
-    lib_dir = find_lib_dir(project_dir, pioenv, LIB_NAME)
-    if lib_dir is None:
-        print('[copy_template] Library %s not found in .pio/libdeps/%s' % (LIB_NAME, pioenv))
+    if not os.path.isdir(TPL_DIR):
+        print(f"[copy_template] Template directory not found: {TPL_DIR}. Nothing to do.")
         return
 
-    print('[copy_template] Found library folder: %s' % lib_dir)
+    # Ensure the env root exists so we can drop envroot files even on first build
+    if LIBDEPS_ROOT and not os.path.isdir(LIBDEPS_ROOT):
+        # Why create: sometimes the first run hasn't created libdeps yet.
+        os.makedirs(LIBDEPS_ROOT, exist_ok=True)
 
-    # Prefer per-env templates if present
-    source_dir = env_tpl_dir if env_tpl_dir and os.path.isdir(env_tpl_dir) else TPL_DIR
-    if not os.path.isdir(source_dir):
-        print('[copy_template] Template directory not found: %s' % source_dir)
-        return
+    for item in FILES:
+        name = item["name"]
+        target = item["target"]
+        src_dir = get_src_for_item(item)
+        src = os.path.join(src_dir, name)
 
-    for f in FILES_TO_COPY:
-        filename = f['name']
-        dest_type = f.get('dest', 'lib')
-        lib_name = f.get('lib')
+        if not os.path.isfile(src):
+            print(f"[copy_template] Skipping (not found): {src}")
+            continue
 
-        if dest_type == 'lib':
-            src = os.path.join(source_dir, filename)
-            if not os.path.isfile(src):
-                print('[copy_template] Template file not found in %s: %s' % (source_dir, filename))
+        if target == "libdir":
+            lib_name = item.get("lib")
+            lib_dir = find_library_dir(lib_name) if lib_name else None
+            if not lib_dir:
+                print(
+                    f"[copy_template] Library '{lib_name}' not found in {LIBDEPS_ROOT}. "
+                    "It will be copied on the next build once dependencies are installed."
+                )
                 continue
-            dst = os.path.join(lib_dir, filename)
-            try:
-                # Overwrite the TFT_eSPI library file with the template.
-                # No backup is created by default to avoid cluttering the project.
+            dst = os.path.join(lib_dir, name)
+            safe_copy(src, dst)
 
-                shutil.copy2(src, dst)
-                print('[copy_template] Copied: %s -> %s' % (src, dst))
-            except Exception as e:
-                print('[copy_template] Error copying %s -> %s: %s' % (src, dst, str(e)))
-        elif dest_type == 'env_root':
-            # Put file in .pio/libdeps/<env>/ to be visible to lvgl as described
-            copied = copy_file_to_env_root(project_dir, pioenv, filename, lib_name)
-            if not copied:
-                print('[copy_template] env_root copy skipped or failed for %s (lib: %s)\n' % (filename, lib_name))
+        elif target == "envroot":
+            if not LIBDEPS_ROOT:
+                print("[copy_template] No libdeps root available. Skipping envroot copy.")
+                continue
+            dst = os.path.join(LIBDEPS_ROOT, name)
+            safe_copy(src, dst)
 
-# Run the copier
-copy_templates()
+        else:
+            print(f"[copy_template] Unknown target '{target}' for {name}. Skipping.")
+
+
+# Execute when PlatformIO runs the extra script
+run()

@@ -24,4 +24,4 @@ Behavior
 - Existing files are overwritten by the templates (no `.bak` is created).
 - The script logs what it copies and whether anything is skipped.
 
-If you want to add more templates, update `scripts/copy_template.py` FILES_TO_COPY mapping.
+If you want to add more templates, update the `FILES` list in `scripts/copy_template.py`.
