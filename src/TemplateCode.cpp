@@ -139,10 +139,11 @@ void TemplateCode::readTouchpad(lv_indev_drv_t *indev_drv, lv_indev_data_t *data
   uint16_t rawX, rawY;
   if (display.ts.getTouch(&rawX, &rawY))
   {
-    // Map raw touchscreen coordinates to screen orientation
+    // Map raw touchscreen coordinates to portrait screen orientation
+    // For CST820 on CYD the sensor is rotated; swap and flip accordingly.
     data->state = LV_INDEV_STATE_PR;
-    data->point.x = rawY;
-    data->point.y = 240 - rawX;
+    data->point.x = rawY;                       // 0..SCREEN_WIDTH-1
+    data->point.y = SCREEN_WIDTH - 1 - rawX;    // use width (240) for flip
   }
   else
   {

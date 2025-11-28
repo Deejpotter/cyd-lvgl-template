@@ -38,9 +38,10 @@ private:
   static constexpr uint8_t CST820_INT = 21;
 #endif
 
-  // Screen Configuration
-  static constexpr uint16_t SCREEN_WIDTH = 320;
-  static constexpr uint16_t SCREEN_HEIGHT = 240;
+  // Screen Configuration (portrait)
+  // LVGL expects width x height. For CYD portrait, use 240 x 320.
+  static constexpr uint16_t SCREEN_WIDTH = 240;
+  static constexpr uint16_t SCREEN_HEIGHT = 320;
 
 #ifdef TOUCH_TYPE_RESISTIVE
   // Touch Calibration Values
