@@ -18,24 +18,76 @@
 #endif
 #include "RGBledDriver.h"
 
+// Pin mapping via PlatformIO build flags (prefer PIO-defined macros)
+// Resistive (XPT2046) pins
+#if defined(MODEL_JC2432W328R)
+#ifndef XPT2046_CS
+#ifdef TOUCH_CS
+#define XPT2046_CS TOUCH_CS
+#else
+#define XPT2046_CS 33
+#endif
+#endif
+#ifndef XPT2046_IRQ
+#ifdef TOUCH_IRQ
+#define XPT2046_IRQ TOUCH_IRQ
+#else
+#define XPT2046_IRQ 36
+#endif
+#endif
+#ifndef XPT2046_CLK
+#ifdef TFT_SCLK
+#define XPT2046_CLK TFT_SCLK
+#else
+#define XPT2046_CLK 14
+#endif
+#endif
+#ifndef XPT2046_MISO
+#ifdef TFT_MISO
+#define XPT2046_MISO TFT_MISO
+#else
+#define XPT2046_MISO 12
+#endif
+#endif
+#ifndef XPT2046_MOSI
+#ifdef TFT_MOSI
+#define XPT2046_MOSI TFT_MOSI
+#else
+#define XPT2046_MOSI 13
+#endif
+#endif
+#endif // MODEL_JC2432W328R
+
+// Capacitive (CST820) pins
+#if defined(MODEL_JC2432W328C)
+#ifndef CST820_SDA
+#ifdef I2C_SDA
+#define CST820_SDA I2C_SDA
+#else
+#define CST820_SDA 33
+#endif
+#endif
+#ifndef CST820_SCL
+#ifdef I2C_SCL
+#define CST820_SCL I2C_SCL
+#else
+#define CST820_SCL 32
+#endif
+#endif
+#ifndef CST820_RST
+#define CST820_RST 25
+#endif
+#ifndef CST820_INT
+#define CST820_INT 21
+#endif
+#endif // MODEL_JC2432W328C
+
 class TemplateCode
 {
 
 private:
   // Hardware Configuration
-#if defined(MODEL_JC2432W328R)
-  static constexpr uint8_t XPT2046_IRQ = 36;
-  static constexpr uint8_t XPT2046_MOSI = 13;
-  static constexpr uint8_t XPT2046_MISO = 12;
-  static constexpr uint8_t XPT2046_CLK = 14;
-  static constexpr uint8_t XPT2046_CS = 33;
-#endif
-#if defined(MODEL_JC2432W328C)
-  static constexpr uint8_t CST820_SDA = 33;
-  static constexpr uint8_t CST820_SCL = 32;
-  static constexpr uint8_t CST820_RST = 25;
-  static constexpr uint8_t CST820_INT = 21;
-#endif
+  // Pins are provided via macros from PlatformIO (see above mapping).
 
   // Screen Configuration (per touch/display orientation)
   // LVGL expects width x height.
@@ -43,17 +95,17 @@ private:
 #define TFT_ROTATION 0
 #endif
 
-// Native panel resolution (ST7789 on CYD): 240x320 (portrait)
-static constexpr uint16_t PANEL_WIDTH = 240;
-static constexpr uint16_t PANEL_HEIGHT = 320;
+  // Native panel resolution (ST7789 on CYD): 240x320 (portrait)
+  static constexpr uint16_t PANEL_WIDTH = 240;
+  static constexpr uint16_t PANEL_HEIGHT = 320;
 
 // Derive LVGL resolution from rotation: 0/2 -> portrait, 1/3 -> landscape
 #if (TFT_ROTATION == 0) || (TFT_ROTATION == 2)
-static constexpr uint16_t SCREEN_WIDTH = PANEL_WIDTH;
-static constexpr uint16_t SCREEN_HEIGHT = PANEL_HEIGHT;
+  static constexpr uint16_t SCREEN_WIDTH = PANEL_WIDTH;
+  static constexpr uint16_t SCREEN_HEIGHT = PANEL_HEIGHT;
 #else
-static constexpr uint16_t SCREEN_WIDTH = PANEL_HEIGHT;
-static constexpr uint16_t SCREEN_HEIGHT = PANEL_WIDTH;
+  static constexpr uint16_t SCREEN_WIDTH = PANEL_HEIGHT;
+  static constexpr uint16_t SCREEN_HEIGHT = PANEL_WIDTH;
 #endif
 
 #if defined(MODEL_JC2432W328R)
