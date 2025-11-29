@@ -5,6 +5,10 @@
  */
 
 #include "TemplateCode.h"
+#if defined(MODEL_JC4827W543R) && defined(ENABLE_ARDUINO_GFX)
+#include <databus/Arduino_ESP32QSPI.h>
+#include <display/Arduino_NV3041A.h>
+#endif
 
 // Initialize static members
 TemplateCode *TemplateCode::instance = nullptr;
@@ -19,6 +23,8 @@ TemplateCode::TemplateCode()
 #elif defined(MODEL_JC2432W328C)
     : ts(),
       tft(SCREEN_WIDTH, SCREEN_HEIGHT)
+#elif defined(MODEL_JC4827W543R) && defined(ENABLE_ARDUINO_GFX)
+    : ts(XPT2046_CS, XPT2046_IRQ)
 #else
     : tft(SCREEN_WIDTH, SCREEN_HEIGHT)
 #endif
@@ -56,6 +62,10 @@ void TemplateCode::initializeHardware()
 #if defined(MODEL_JC2432W328R)
   mySpi.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
 #endif
+#if defined(MODEL_JC4827W543R) && defined(ENABLE_ARDUINO_GFX)
+  // Use default SPI bus for XPT2046 on S3 with provided pins
+  SPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
+#endif
 }
 
 void TemplateCode::initializeLVGL()
@@ -68,6 +78,11 @@ void TemplateCode::setupTouchscreen()
 {
 #if defined(MODEL_JC2432W328R)
   ts.begin(mySpi);
+  ts.setRotation(TFT_ROTATION);
+#endif
+#if defined(MODEL_JC4827W543R) && defined(ENABLE_ARDUINO_GFX)
+  // Resistive XPT2046 on dedicated SPI
+  ts.begin();
   ts.setRotation(TFT_ROTATION);
 #endif
 #if defined(MODEL_JC2432W328C)
@@ -99,8 +114,30 @@ void TemplateCode::setupTouchscreen()
 
 void TemplateCode::setupDisplay()
 {
+  // Initialize display depending on driver selection
+#if defined(MODEL_JC4827W543R) && defined(ENABLE_ARDUINO_GFX)
+  // Backlight control (active HIGH on pin GFX_BL)
+#ifdef GFX_BL
+  pinMode(GFX_BL, OUTPUT);
+  digitalWrite(GFX_BL, HIGH);
+#endif
+
+  // Create QSPI bus and NV3041A panel, then optional canvas
+  qspiBus = new Arduino_ESP32QSPI(QSPI_CS, QSPI_SCK, QSPI_D0, QSPI_D1, QSPI_D2, QSPI_D3);
+  panel = new Arduino_NV3041A(qspiBus, GFX_NOT_DEFINED /* RST */, (uint8_t)(TFT_ROTATION & 0x3), true /* IPS */);
+
+  // Optional canvas provides off-screen buffer; LVGL will draw per area directly to panel for now.
+  // If needed later: gfxCanvas = new Arduino_Canvas(SCREEN_WIDTH, SCREEN_HEIGHT, panel);
+
+  // Begin panel
+  if (!panel->begin())
+  {
+    Serial.println("NV3041A begin failed");
+  }
+#else
   tft.begin();
   tft.setRotation(TFT_ROTATION);
+#endif
 
   static lv_disp_drv_t disp_drv;
   lv_disp_drv_init(&disp_drv);
@@ -123,12 +160,18 @@ void TemplateCode::flushDisplay(lv_disp_drv_t *disp_drv, const lv_area_t *area, 
   uint32_t w = (area->x2 - area->x1 + 1);
   uint32_t h = (area->y2 - area->y1 + 1);
 
+#if defined(MODEL_JC4827W543R) && defined(ENABLE_ARDUINO_GFX)
+  // Draw directly to NV3041A panel using RGB565 buffer from LVGL
+  display.panel->draw16bitRGBBitmap(area->x1, area->y1, (uint16_t *)&color_p->full, w, h);
+  lv_disp_flush_ready(disp_drv);
+#else
   display.tft.startWrite();
   display.tft.setAddrWindow(area->x1, area->y1, w, h);
   display.tft.pushColors((uint16_t *)&color_p->full, w * h, true);
   display.tft.endWrite();
 
   lv_disp_flush_ready(disp_drv);
+#endif
 }
 
 #if defined(MODEL_JC2432W328R)
@@ -216,6 +259,39 @@ void TemplateCode::readTouchpad(lv_indev_drv_t *indev_drv, lv_indev_data_t *data
   {
     data->state = LV_INDEV_STATE_REL;
   }
+}
+#endif
+#if defined(MODEL_JC4827W543R) && defined(ENABLE_ARDUINO_GFX)
+void TemplateCode::readTouchpad(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
+{
+  auto &display = getInstance();
+  bool touched = (display.ts.tirqTouched() && display.ts.touched());
+
+  if (!touched)
+  {
+    data->state = LV_INDEV_STATE_REL;
+    return;
+  }
+
+  TS_Point p = display.ts.getPoint();
+  int32_t mappedX = map(p.x, TOUCH_X_MIN, TOUCH_X_MAX, 0, SCREEN_WIDTH - 1);
+  int32_t mappedY = map(p.y, TOUCH_Y_MIN, TOUCH_Y_MAX, 0, SCREEN_HEIGHT - 1);
+
+  int32_t touchX = (SCREEN_WIDTH - 1) - mappedX;
+  int32_t touchY = (SCREEN_HEIGHT - 1) - mappedY;
+
+  if (touchX < 0)
+    touchX = 0;
+  if (touchX > (int32_t)SCREEN_WIDTH - 1)
+    touchX = SCREEN_WIDTH - 1;
+  if (touchY < 0)
+    touchY = 0;
+  if (touchY > (int32_t)SCREEN_HEIGHT - 1)
+    touchY = SCREEN_HEIGHT - 1;
+
+  data->state = LV_INDEV_STATE_PR;
+  data->point.x = (lv_coord_t)touchX;
+  data->point.y = (lv_coord_t)touchY;
 }
 #endif
 

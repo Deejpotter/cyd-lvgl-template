@@ -2,12 +2,13 @@
 
 ## Overview
 
-This is a template that can be used to create a project for the JC2432W328R (AKA the Cheap Yellow Display) ESP32 board, as well as the JC2432W328C and JC4827W543R. The project is designed to initialize the display, touch screen, and lvgl interface.
-The user interface is built using LVGL. The code is uploaded to the CYD using PlatformIO.
+This template supports JC2432W328R (Cheap Yellow Display), JC2432W328C, and JC4827W543R ESP32 boards. It initializes the display, touch screen, and LVGL interface directly in code (no Squareline Studio).
 
-The rest of the project is up to you! You can add your own logic, events, and UI elements to create a custom project.
+UI is built using LVGL directly in `src/`. Upload code to your board using PlatformIO.
 
-Use the pins and other information in this template to connect sensors, motors, and other devices to the ESP32.
+Add your own logic, events, and UI elements in `src/` to create a custom project.
+
+Use the pinouts and configuration in this template to connect sensors, motors, and other devices to the ESP32.
 
 ## Hardware Requirements
 
@@ -26,10 +27,11 @@ Use the pins and other information in this template to connect sensors, motors, 
   - Capacitive touch screen (CST820 controller)
 
 - JC4827W543R ESP32 Board
-  - 4.82-inch TFT display (540x480 resolution)
-  - ST7789 V2 display driver
-  - ESP32-WROOM microcontroller
+  - 4.3-inch TFT display (480x272 resolution)
+  - NV3041A display driver over 4-bit QSPI (ESP32-S3)
+  - ESP32-S3-WROOM-1 module
   - Built-in USB-C connector
+  - Resistive touch (XPT2046) or Capacitive touch (GT911) variants
 
 ## Development Environment Setup
 
@@ -43,21 +45,22 @@ Use the pins and other information in this template to connect sensors, motors, 
 
 ```ini
 lib_deps = 
-   bodmer/TFT_eSPI@^2.5.42
-   lvgl/lvgl@^8.3.6
+  bodmer/TFT_eSPI@^2.5.42
+  https://github.com/PaulStoffregen/XPT2046_Touchscreen.git
+  lvgl/lvgl@^8.3.6
+  https://github.com/bitbank2/bb_captouch.git
 ```
 
 ```txt
 project/
 ├── src/
-│   ├── main.cpp           # Main program logic
-│   ├── ui/               # Generated UI files from Squareline
-│   │   ├── ui.h
-│   │   ├── ui.c
-│   │   ├── ui_events.cpp  # Custom event handlers
-│   │   └── ui_events.h
-│   └── config/           # Configuration files
+│   └── main.cpp           # Main program logic + LVGL UI
 ├── platformio.ini        # PlatformIO configuration
+├── scripts/               # Pre-build template copy script
+│   └── copy_template.py
+├── template files/        # LVGL & TFT_eSPI config templates
+│   ├── lv_conf.h
+│   └── <env>/User_Setup.h
 └── README.md
 ```
 
@@ -75,10 +78,10 @@ project/
 #define TFT_BL   27
 // Touch (resistive)
 #define TOUCH_CS 33
-#define TOUCH_IRQ 39
+#define TOUCH_IRQ 36
 ```
 
-> Note: The pinout above is confirmed for the JC2432W328R (resistive). Some online sources mention pins 21 and 27 may be switched on other models; this template uses the configuration from the [env:jc2432w328r] in `platformio.ini`.
+> Note: The pinout above is confirmed for the JC2432W328R (resistive). Some online sources mention pins 21 and 27 may be switched on other models (like the JC2432S028R); this template uses the configuration from the [env:jc2432w328r] in `platformio.ini`.
 
 ### JC2432W328C
 
@@ -94,18 +97,57 @@ project/
 #define I2C_SDA 33
 #define I2C_SCL 32
 #define TOUCH_INT 21
+// Optional reset
+#define CST820_RST 25
 ```
 
-> Note: The pinout above is typical for the JC2432W328C (capacitive, CST820). The CST820 touch controller uses I2C. Confirm your board's silkscreen or schematic if you encounter issues.
+### JC4827W543R (ESP32-S3 + NV3041A QSPI, resistive XPT2046) — confirmed
 
-### JC4827W543R
+Display (NV3041A over QSPI):
+
+```cpp
+// QSPI data bus to panel
+#define QSPI_CS  45
+#define QSPI_SCK 47
+#define QSPI_D0  21
+#define QSPI_D1  48
+#define QSPI_D2  40
+#define QSPI_D3  39
+
+// Backlight (active HIGH)
+#define GFX_BL   1
+```
+
+Touch (XPT2046 on SPI):
+
+```cpp
+#define XPT2046_CS   38
+#define XPT2046_IRQ  3
+#define XPT2046_MOSI 11
+#define XPT2046_MISO 13
+#define XPT2046_CLK  12
+// Optional calibration (defaults work for most panels)
+#define TOUCH_X_MIN 200
+#define TOUCH_X_MAX 3700
+#define TOUCH_Y_MIN 240
+#define TOUCH_Y_MAX 3800
+```
+
+Notes:
+
+- Environment: `env:jc4827w543r` sets `board = esp32-s3-devkitc-1` (ESP32-S3) and uses Arduino_GFX only for this board (other boards remain on TFT_eSPI).
+- Driver: Arduino_GFX with `Arduino_ESP32QSPI` + `Arduino_NV3041A`.
+- Backlight: GPIO1, active HIGH.
+- Orientation: default `TFT_ROTATION=0` (change in `platformio.ini` if needed).
+- Color inversion: NV3041A needs INVON (0x21) for correct colors on most JC4827 modules; Arduino_GFX or a custom init can send this.
 
 ## Models and Orientation
 
-This template supports both CYD variants with a unified display pipeline. The only difference is the touch interface:
+This template supports the boards via per-environment build flags. Primary differences are touch interfaces and pinouts:
 
-- JC2432W328R (resistive): XPT2046 over SPI
-- JC2432W328C (capacitive): CST820 over I2C
+- JC2432W328R (resistive): XPT2046 (SPI)
+- JC2432W328C (capacitive): CST820 (I2C)
+- JC4827W543R (resistive): XPT2046 (SoftSPI)
 
 Model selection and orientation are controlled via build flags per environment in `platformio.ini`:
 
@@ -119,22 +161,18 @@ Rotation values (same as TFT_eSPI):
 - 2: Portrait 180°
 - 3: Landscape CCW
 
-Defaults in this repo:
+Defaults in this repo (`platformio.ini`):
 
-- `env:jc2432w328r`: `-DMODEL_JC2432W328R -DTFT_ROTATION=3` (working landscape)
-- `env:jc2432w328c`: `-DMODEL_JC2432W328C -DTFT_ROTATION=0` (portrait)
+- Default env: `jc2432w328c`
+- `env:jc2432w328r`: `-DMODEL_JC2432W328R -DTFT_ROTATION=1`
+- `env:jc2432w328c`: `-DMODEL_JC2432W328C -DTFT_ROTATION=1`
+- `env:jc4827w543r`: `-DMODEL_JC4827W543R -DTFT_ROTATION=0`
 
 Change orientation by editing `TFT_ROTATION` in the environment you build.
 
 ## Building and Flashing
 
-### 1. Clone the repository
-
-```bash
-git clone git@github.com:Makerstore/actuator-controller.git
-```
-
-### 2. Open in VS Code with PlatformIO
+### 1. Open in VS Code with PlatformIO
 
 Open the project in Visual Studio Code with the PlatformIO extension installed.
 
@@ -147,21 +185,25 @@ The pre-build script `scripts/copy_template.py` copies the needed files from `te
 
 You don’t need to move these files manually.
 
-### 3. Build the project
+### 2. Build the selected environment
 
 ```bash
-pio run
+pio run -e <env>
+# examples:
+pio run -e jc2432w328r
+pio run -e jc2432w328c
+pio run -e jc4827w543r
 ```
 
-### 4. Upload to the device
+### 3. Upload to the device
 
 ```bash
-pio run --target upload
+pio run -e <env> --target upload
 ```
 
 ## UI Modifications
 
-The user interface is built using the provided template files. To modify or extend the UI, edit the template source files in the `src/` directory. Implement any new event handlers or logic in your own `.cpp` files as needed.
+Build your UI directly with LVGL in `src/`. No Squareline Studio workflow is used. Add or modify event handlers and logic in your own `.cpp` files as needed.
 
 ### Important Notes
 
@@ -189,7 +231,6 @@ Verify library versions are compatible
 
 - Almost correct pinout (pins 21 and 27 are switched): [ESP32 Cheap Yellow Display (CYD) Pinout (ESP32-2432S028R) | Random Nerd Tutorials](https://randomnerdtutorials.com/esp32-cheap-yellow-display-cyd-pinout-esp32-2432s028r/#speaker)
 - This specific model of device (not quite accurate): <https://github.com/maxpill/JC2432W328>
-- Squareline: <https://squareline.io/downloads>
 - Cheap yellow display github: <https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display/tree/main>
 - Link to Squarline CYD template: <https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display/discussions/102>
 - Reddit discussion also for this specific model of device: <https://www.reddit.com/r/esp32/comments/1dy5k11/working_cyd_jc2432w328_display_240x320_28_usbc/?rdt=34968>
@@ -199,6 +240,7 @@ Verify library versions are compatible
 
 ### JC2432W328C links
 
+- Working touch driver: [GitHub - bitbank2/bb_captouch: Capacitive touch library for ESP32 using FocalTech CST820 controller](https://github.com/bitbank2/bb_captouch)
 - Official/Community documentation: [maxpill/JC2432W328 GitHub](https://github.com/maxpill/JC2432W328)
 - Community discussion and working code: [Reddit: Working CYD JC2432W328 Display 240x320 2.8" USB-C](https://www.reddit.com/r/esp32/comments/1dy5k11/working_cyd_jc2432w328_display_240x320_28_usbc/)
 - Product listing and specs: [AliExpress JC2432W328C](https://aliexpress.com/item/1005006729707613.html)
@@ -207,11 +249,27 @@ Verify library versions are compatible
 
 ### JC4827W543R links
 
+- Guition/JCZN hardware models (translated): <https://www.guition.com/doc_en/>
+- Profi-max JC4827W543 examples: <https://github.com/profi-max/JC4827W543_4.3inch_ESP32S3_board>
+- CNCWiki community page: <https://www.cncwiki.org/index.php?title=JCZN_JC4827W543_ESP32_4.3%22_Touch_Screen_Display_Module>
+- calint notes/examples: <https://github.com/calint/JC4827W543R>
+- vldmr-d Guition ESP32-S3 repo: <https://github.com/vldmr-d/Guition-ESP32-S3-JC4827W543R_I>
+- NV3041A driver datasheet: <https://admin.osptek.com/uploads/NV_3041_A_Datasheet_V1_2_20221011_686486a221.pdf>
+- ESP32-S3-WROOM-1 datasheet: <https://www.espressif.com>
+
+Confirmed pinout and init reference:
+
+- Calint’s QSPI NV3041A bring-up (includes gamma and INVON sequence):
+  - Repo: <https://github.com/calint/platformio-bam>
+  - Device file: <https://github.com/calint/platformio-bam/blob/master/src/devices/JC4827W543.hpp>
+    - Resistive touch variant: <https://raw.githubusercontent.com/calint/platformio-bam/refs/heads/master/src/devices/JC4827W543R.hpp>
+    - Capacitive touch variant: <https://raw.githubusercontent.com/calint/platformio-bam/refs/heads/master/src/devices/JC4827W543C.hpp>
+
 ## How template files are applied
 
-A pre-build script copies the needed files automatically:
+Template files are copied automatically before build by the pre-build script (`scripts/copy_template.py`).
 
 - `template files/lv_conf.h` -> `.pio/libdeps/<env>/lv_conf.h`
 - `template files/<env>/User_Setup.h` -> `.pio/libdeps/<env>/TFT_eSPI/User_Setup.h`
 
-No manual moves are required.
+No manual copying is required.
