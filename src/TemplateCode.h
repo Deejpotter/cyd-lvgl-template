@@ -109,11 +109,21 @@ private:
 #endif
 
 #if defined(MODEL_JC2432W328R)
-  // Touch Calibration Values
-  static constexpr uint16_t TOUCH_X_MIN = 200;
-  static constexpr uint16_t TOUCH_X_MAX = 3700;
-  static constexpr uint16_t TOUCH_Y_MIN = 240;
-  static constexpr uint16_t TOUCH_Y_MAX = 3800;
+// Touch Calibration Values (overridable via PlatformIO build flags)
+// Define TOUCH_X_MIN, TOUCH_X_MAX, TOUCH_Y_MIN, TOUCH_Y_MAX in platformio.ini to customize.
+// Defaults match common JC2432W328R panels.
+#ifndef TOUCH_X_MIN
+#define TOUCH_X_MIN 200
+#endif
+#ifndef TOUCH_X_MAX
+#define TOUCH_X_MAX 3700
+#endif
+#ifndef TOUCH_Y_MIN
+#define TOUCH_Y_MIN 240
+#endif
+#ifndef TOUCH_Y_MAX
+#define TOUCH_Y_MAX 3800
+#endif
 #endif
 
   // Hardware Instances
