@@ -144,12 +144,30 @@ void TemplateCode::readTouchpad(lv_indev_drv_t *indev_drv, lv_indev_data_t *data
   }
 
   TS_Point p = display.ts.getPoint();
-  uint16_t touchX = map(p.x, TOUCH_X_MIN, TOUCH_X_MAX, 1, SCREEN_WIDTH);
-  uint16_t touchY = map(p.y, TOUCH_Y_MIN, TOUCH_Y_MAX, 1, SCREEN_HEIGHT);
+  // Map raw ADC coords into 0..(W-1) / 0..(H-1)
+  int32_t mappedX = map(p.x, TOUCH_X_MIN, TOUCH_X_MAX, 0, SCREEN_WIDTH - 1);
+  int32_t mappedY = map(p.y, TOUCH_Y_MIN, TOUCH_Y_MAX, 0, SCREEN_HEIGHT - 1);
+
+  // Observation: this board's resistive wiring returns coordinates that are
+  // inverted on both axes compared to the LV coordinate frame (top-left -> max,max).
+  // Correct by inverting both axes so physical top-left -> (0,0) in LV.
+  int32_t touchX = (SCREEN_WIDTH - 1) - mappedX;
+  int32_t touchY = (SCREEN_HEIGHT - 1) - mappedY;
+
+  // Clamp to valid ranges
+  if (touchX < 0)
+    touchX = 0;
+  if (touchX > (int32_t)SCREEN_WIDTH - 1)
+    touchX = SCREEN_WIDTH - 1;
+  if (touchY < 0)
+    touchY = 0;
+  if (touchY > (int32_t)SCREEN_HEIGHT - 1)
+    touchY = SCREEN_HEIGHT - 1;
 
   data->state = LV_INDEV_STATE_PR;
-  data->point.x = touchX;
-  data->point.y = touchY;
+  data->point.x = (lv_coord_t)touchX;
+  data->point.y = (lv_coord_t)touchY;
+
   // Throttled debug output for resistive touch (minimal CPU impact)
   {
     static uint32_t lastDbgR = 0;
@@ -157,7 +175,7 @@ void TemplateCode::readTouchpad(lv_indev_drv_t *indev_drv, lv_indev_data_t *data
     if (now - lastDbgR > 250)
     {
       lastDbgR = now;
-      Serial.printf("XPT raw:%u,%u -> LV:%u,%u\n", p.x, p.y, touchX, touchY);
+      Serial.printf("XPT raw:%u,%u -> Mapped:%ld,%ld -> LV:%ld,%ld\n", p.x, p.y, (long)mappedX, (long)mappedY, (long)touchX, (long)touchY);
       Serial.flush();
     }
   }
