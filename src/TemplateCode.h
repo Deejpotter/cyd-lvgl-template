@@ -14,7 +14,7 @@
 #if defined(MODEL_JC2432W328R)
 #include <XPT2046_Touchscreen.h>
 #elif defined(MODEL_JC2432W328C)
-#include "CST820.h"
+#include <bb_captouch.h>
 #endif
 #include "RGBledDriver.h"
 
@@ -82,6 +82,10 @@
 #endif
 #endif // MODEL_JC2432W328C
 
+// The BitBank `BBCapTouch` library handles a variety of controllers and
+// provides rotation support via `setOrientation()`. No raw-range macros
+// are required when using that library.
+
 class TemplateCode
 {
 
@@ -132,7 +136,7 @@ private:
   XPT2046_Touchscreen ts;
 #endif
 #if defined(MODEL_JC2432W328C)
-  CST820 ts;
+  BBCapTouch ts;
 #endif
   TFT_eSPI tft;
 

@@ -17,7 +17,7 @@ TemplateCode::TemplateCode()
       ts(XPT2046_CS, XPT2046_IRQ),
       tft(SCREEN_WIDTH, SCREEN_HEIGHT)
 #elif defined(MODEL_JC2432W328C)
-    : ts(CST820_SDA, CST820_SCL, CST820_RST, CST820_INT),
+    : ts(),
       tft(SCREEN_WIDTH, SCREEN_HEIGHT)
 #else
     : tft(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -36,8 +36,6 @@ TemplateCode &TemplateCode::getInstance()
 
 bool TemplateCode::begin()
 {
-  // Serial will be initialized in main setup() at preferred baud rate
-
 #if LV_USE_LOG != 0
   lv_log_register_print_cb(debugPrint);
 #endif
@@ -73,7 +71,29 @@ void TemplateCode::setupTouchscreen()
   ts.setRotation(TFT_ROTATION);
 #endif
 #if defined(MODEL_JC2432W328C)
-  ts.begin();
+  // Initialize BitBank capacitive touch with I2C pins + reset/irq
+  ts.init(CST820_SDA, CST820_SCL, CST820_RST, CST820_INT);
+
+  // Map TFT_ROTATION (0..3) to degrees for setOrientation
+  int oriDeg = 0;
+  switch (TFT_ROTATION & 0x3)
+  {
+  case 0:
+    oriDeg = 0;
+    break;
+  case 1:
+    oriDeg = 90;
+    break;
+  case 2:
+    oriDeg = 180;
+    break;
+  case 3:
+    oriDeg = 270;
+    break;
+  }
+  ts.setOrientation(oriDeg, SCREEN_WIDTH, SCREEN_HEIGHT);
+  Serial.printf("BBCapTouch init: sensor=%d orient=%d %ux%u\n", ts.sensorType(), oriDeg, (unsigned)SCREEN_WIDTH, (unsigned)SCREEN_HEIGHT);
+  Serial.flush();
 #endif
 }
 
@@ -130,35 +150,48 @@ void TemplateCode::readTouchpad(lv_indev_drv_t *indev_drv, lv_indev_data_t *data
   data->state = LV_INDEV_STATE_PR;
   data->point.x = touchX;
   data->point.y = touchY;
+  // Throttled debug output for resistive touch (minimal CPU impact)
+  {
+    static uint32_t lastDbgR = 0;
+    uint32_t now = millis();
+    if (now - lastDbgR > 250)
+    {
+      lastDbgR = now;
+      Serial.printf("XPT raw:%u,%u -> LV:%u,%u\n", p.x, p.y, touchX, touchY);
+      Serial.flush();
+    }
+  }
 }
 #endif
 #if defined(MODEL_JC2432W328C)
 void TemplateCode::readTouchpad(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
 {
   auto &display = getInstance();
-  uint16_t rawX, rawY;
-  if (display.ts.getTouch(&rawX, &rawY))
+  TOUCHINFO ti = {};
+  if (display.ts.getSamples(&ti) && ti.count > 0)
   {
-    // Basic mapping for CST820. Adjust for rotation.
+    // BBCapTouch already applies setOrientation() so coords match LV frame
+    int sx = (int)ti.x[0];
+    int sy = (int)ti.y[0];
+    if (sx < 0)
+      sx = 0;
+    if (sx >= (int)SCREEN_WIDTH)
+      sx = SCREEN_WIDTH - 1;
+    if (sy < 0)
+      sy = 0;
+    if (sy >= (int)SCREEN_HEIGHT)
+      sy = SCREEN_HEIGHT - 1;
     data->state = LV_INDEV_STATE_PR;
-    switch (TFT_ROTATION & 0x3)
+    data->point.x = sx;
+    data->point.y = sy;
+    // Throttled minimal debug
+    static uint32_t lastDbgC = 0;
+    uint32_t now = millis();
+    if (now - lastDbgC > 250)
     {
-    case 0: // portrait
-      data->point.x = rawY;
-      data->point.y = SCREEN_WIDTH - 1 - rawX;
-      break;
-    case 1: // landscape CW
-      data->point.x = SCREEN_WIDTH - 1 - rawX;
-      data->point.y = SCREEN_HEIGHT - 1 - rawY;
-      break;
-    case 2: // portrait 180
-      data->point.x = SCREEN_HEIGHT - 1 - rawY;
-      data->point.y = rawX;
-      break;
-    case 3: // landscape CCW
-      data->point.x = rawX;
-      data->point.y = rawY;
-      break;
+      lastDbgC = now;
+      Serial.printf("BBCapTouch sample: %u -> LV:%d,%d\n", ti.count, data->point.x, data->point.y);
+      Serial.flush();
     }
   }
   else
